@@ -220065,6 +220065,18 @@
             var countEl = document.getElementById('count');
             var sidebarList = document.getElementById('sidebar-list');
             var modeRadios = document.querySelectorAll('input[name="mode"]');
+            // keširaj tekst svih natuknica — jednom, na početku
+            var entriesData = [];
+            entries.forEach(function(e) {
+              var hw = e.querySelector('.headword');
+              var lema = hw ? hw.textContent : '';
+              entriesData.push({
+                el: e,
+                lema: lema,
+                lemaNorm: azbuka(lema),
+                tekstNorm: azbuka(e.textContent)
+              });
+            });
 
             function azbuka(tekst) {
               return tekst
@@ -220096,18 +220108,13 @@
               var upit = azbuka(input.value.trim());
               var mode = dohvatiMode();
               var vidljivo = 0;
-              entries.forEach(function(e) {
-                var tekst;
-                if (mode === 'lema') {
-                  tekst = azbuka(lemaTekst(e));
-                } else {
-                  tekst = azbuka(e.textContent);
-                }
+              entriesData.forEach(function(item) {
+                var tekst = (mode === 'lema') ? item.lemaNorm : item.tekstNorm;
                 if (!upit || tekst.indexOf(upit) !== -1) {
-                  e.classList.remove('hidden');
+                  item.el.classList.remove('hidden');
                   vidljivo++;
                 } else {
-                  e.classList.add('hidden');
+                  item.el.classList.add('hidden');
                 }
               });
               countEl.textContent = vidljivo;
@@ -220116,9 +220123,9 @@
 
             function osvjeziSidebar() {
               var vidljive = [];
-              entries.forEach(function(e) {
-                if (!e.classList.contains('hidden')) {
-                  vidljive.push({el: e, lema: lemaTekst(e)});
+              entriesData.forEach(function(item) {
+                if (!item.el.classList.contains('hidden')) {
+                  vidljive.push(item);
                 }
               });
 
@@ -220129,7 +220136,7 @@
                 var upit = azbuka(input.value.trim());
                 var idx = 0;
                 for (var i = 0; i < vidljive.length; i++) {
-                  if (azbuka(vidljive[i].lema).indexOf(upit) === 0) {
+                  if (vidljive[i].lemaNorm.indexOf(upit) === 0) {
                     idx = i;
                     break;
                   }
@@ -220152,12 +220159,20 @@
               });
             }
 
-            input.addEventListener('input', filtriraj);
+            // debounce — čeka 300ms prije filtriranja
+            var debounceTimer = null;
+            function debounceFiltriraj() {
+              if (debounceTimer) clearTimeout(debounceTimer);
+              debounceTimer = setTimeout(filtriraj, 300);
+            }
+
+            input.addEventListener('input', debounceFiltriraj);
             modeRadios.forEach(function(r) {
               r.addEventListener('change', filtriraj);
             });
 
             filtriraj();
+
             // smooth scroll za uputnice
             document.querySelectorAll('.uputnica a').forEach(function(a) {
               a.addEventListener('click', function(e) {
